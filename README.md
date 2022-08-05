@@ -1,6 +1,6 @@
 # crud_flutter
 
-A new Flutter project.
+SQLite with SQFlite
 
 ## Getting Started
 
