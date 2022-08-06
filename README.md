@@ -1,6 +1,6 @@
 # crud_flutter
 
-SQLite with SQFlite
+SQL with SQFlite
 
 ## Getting Started
 
