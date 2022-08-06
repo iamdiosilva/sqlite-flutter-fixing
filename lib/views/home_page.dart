@@ -2,6 +2,7 @@ import 'package:crud_flutter/database/db.dart';
 import 'package:crud_flutter/models/user.dart';
 import 'package:crud_flutter/repositories/users_repository.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -11,13 +12,15 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  late List<User> users;
-  late DBState state;
+  late UsersRepository usersRep;
+  late TextEditingController nameController;
+  late TextEditingController ageController;
 
   @override
   void initState() {
     super.initState();
-    fillUsersList();
+    nameController = TextEditingController();
+    ageController = TextEditingController();
   }
 
   @override
@@ -26,22 +29,9 @@ class _HomePageState extends State<HomePage> {
     DB.instance.closeDB();
   }
 
-  Future fillUsersList() async {
-    state = DBState.loading;
-    users = await UsersRepository.readAllUsers();
-    state = DBState.loaded;
-  }
-
-  _printUsers() {
-    for (var i in users) {
-      print('${i.id}: ${i.name} has ${i.age} yers old');
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    TextEditingController nameController = TextEditingController();
-    TextEditingController ageController = TextEditingController();
+    usersRep = context.watch<UsersRepository>();
 
     return Scaffold(
       appBar: AppBar(title: Text('Save name')),
@@ -62,7 +52,7 @@ class _HomePageState extends State<HomePage> {
             Form(
               child: TextFormField(
                 controller: ageController,
-                keyboardType: TextInputType.text,
+                keyboardType: TextInputType.number,
                 decoration: InputDecoration(
                   label: Text('Age'),
                 ),
@@ -86,14 +76,29 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
             ),
-            (state == DBState.loaded)
+            (UsersRepository.usersList.isNotEmpty)
                 ? Expanded(
                     child: Container(
                       child: ListView.builder(
-                        itemCount: users.length,
+                        itemCount: UsersRepository.usersList.length,
                         itemBuilder: (context, index) => ListTile(
-                          title: Text(users[index].name),
-                          subtitle: Text(users[index].age),
+                          title: Text(UsersRepository.usersList[index].name),
+                          subtitle: Text(UsersRepository.usersList[index].age),
+                          leading: Text(UsersRepository.usersList[index].id.toString()),
+                          trailing: Wrap(
+                            children: [
+                              IconButton(
+                                onPressed: () => _updateUser(UsersRepository.usersList[index]),
+                                icon: Icon(Icons.edit),
+                              ),
+                              IconButton(
+                                onPressed: () {
+                                  usersRep.deleteUser(UsersRepository.usersList[index].id!);
+                                },
+                                icon: Icon(Icons.delete),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -112,15 +117,58 @@ class _HomePageState extends State<HomePage> {
 
   _save(TextEditingController name, TextEditingController age) {
     if (name.value.text != '' && age.value.text != '') {
-      UsersRepository.saveUser(name.value.text, age.value.text);
+      usersRep.saveUser(name.value.text, age.value.text);
       name.clear();
       age.clear();
     }
   }
-}
 
-enum DBState {
-  start,
-  loading,
-  loaded,
+  _updateUser(User user) {
+    TextEditingController nameController = TextEditingController();
+    TextEditingController ageController = TextEditingController();
+
+    final usersRep = context.read<UsersRepository>();
+
+    nameController.text = user.name;
+    ageController.text = user.age;
+
+    AlertDialog dialog = AlertDialog(
+      title: Text('Edit User'),
+      content: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: 150),
+        child: Column(
+          children: [
+            TextFormField(
+              decoration: InputDecoration(
+                label: Text('Name'),
+              ),
+              controller: nameController,
+            ),
+            TextFormField(
+              decoration: InputDecoration(
+                label: Text('Age'),
+              ),
+              controller: ageController,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        ElevatedButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            if (user.name != nameController.value.text || user.age != ageController.value.text) {
+              usersRep.updateUser(user.id!, nameController.value.text, ageController.value.text);
+              Navigator.pop(context);
+            }
+          },
+          child: Text('Save'),
+        ),
+      ],
+    );
+    showDialog(context: context, builder: (context) => dialog);
+  }
 }

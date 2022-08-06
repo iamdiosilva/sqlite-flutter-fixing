@@ -38,6 +38,8 @@ dependencies:
   #Database
   sqflite: ^2.0.3
 
+  provider: ^6.0.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
